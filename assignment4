@@ -1,0 +1,126 @@
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <FL/Fl.H>
+#include <FL/Fl_Window.H>
+#include <FL/Fl_Box.H>
+#include <FL/fl_draw.H>
+
+using namespace std;
+
+// Pixel Class
+class Pixel {
+private:
+    int positionx;
+    int positiony;
+    vector<int> color; // Using vector for simplicity, should be replaced with vec3
+
+public:
+    Pixel(int x, int y, vector<int> c) : positionx(x), positiony(y), color(c) {}
+
+    void setPositionX(int x) { positionx = x; }
+    int getPositionX() const { return positionx; }
+
+    void setPositionY(int y) { positiony = y; }
+    int getPositionY() const { return positiony; }
+
+    void setColor(vector<int> c) { color = c; }
+    vector<int> getColor() const { return color; }
+};
+
+// ImageData Class
+class ImageData {
+private:
+    vector<vector<Pixel>> Image;
+    int width;
+    int height;
+
+public:
+    ImageData(const string &filename) {
+        ifstream file(filename);
+        string magic_number;
+        file >> magic_number;
+        if (magic_number != "P3") {
+            cerr << "Invalid PPM file format!";
+            exit(1);
+        }
+        file >> width >> height;
+        Image.resize(height, vector<Pixel>(width, Pixel(0, 0, {0, 0, 0})));
+        int max_color;
+        file >> max_color;
+
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                vector<int> color(3);
+                file >> color[0] >> color[1] >> color[2];
+                Image[y][x] = Pixel(x, y, color);
+            }
+        }
+    }
+
+    void setImage(const vector<vector<Pixel>> &img) { Image = img; }
+    vector<vector<Pixel>> getImage() const { return Image; }
+
+    void setWidth(int w) { width = w; }
+    int getWidth() const { return width; }
+
+    void setHeight(int h) { height = h; }
+    int getHeight() const { return height; }
+};
+
+// FLTK Window Class
+class Simple_Window : public Fl_Window {
+private:
+    ImageData *imageData;
+
+public:
+    Simple_Window(int w, int h, const char *title, ImageData *data) : Fl_Window(w, h, title), imageData(data) {}
+
+    void draw() override {
+        Fl_Window::draw();
+        vector<vector<Pixel>> image = imageData->getImage();
+        int width = imageData->getWidth();
+        int height = imageData->getHeight();
+
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                int posX = x * 20 + 10;
+                int posY = y * 20 + 10;
+                vector<int> color = image[y][x].getColor();
+                fl_color(fl_rgb_color(color[0], color[1], color[2]));
+                fl_rectf(posX, posY, 20, 20);
+            }
+        }
+    }
+};
+
+int main()
+{
+    using namespace Graph_lib;   // our graphics facilities are in Graph_lib
+
+    Point tl(100,100);           // to become top left  corner of window
+
+    Simple_window win(tl,600,400,"Canvas");    // make a simple window
+
+    Polygon poly;                // make a shape (a polygon)
+
+    poly.add(Point(300,200));    // add a point
+    poly.add(Point(350,100));    // add another point
+    poly.add(Point(400,200));    // add a third point 
+
+    poly.set_color(Color::red);  // adjust properties of poly
+
+    Text t(Point(150,50), "image ");
+    t.set_font(Graph_lib::Font::times_bold);
+    t.set_font_size(20);
+
+    win.attach(t);
+    
+    win.attach (poly);           // connect poly to the window
+
+    win.wait_for_button();       // give control to the display engine
+
+    return 0;
+}
+
